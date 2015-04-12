@@ -5,13 +5,11 @@ import android.graphics.Color;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
 import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewPropertyAnimatorCompat;
+import android.support.v4.view.ViewPropertyAnimatorListener;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-
-import com.nineoldandroids.animation.Animator;
-import com.nineoldandroids.view.ViewHelper;
-import com.nineoldandroids.view.ViewPropertyAnimator;
 
 import at.markushi.ui.util.BakedBezierInterpolator;
 import at.markushi.ui.util.UiHelper;
@@ -26,7 +24,7 @@ public class RevealColorView extends ViewGroup {
 	private View inkView;
 	private int inkColor;
 	private ShapeDrawable circle;
-	private ViewPropertyAnimator animator;
+	private ViewPropertyAnimatorCompat animator;
 
 	public RevealColorView(Context context) {
 		this(context, null);
@@ -54,7 +52,8 @@ public class RevealColorView extends ViewGroup {
 
 	@Override
 	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-		inkView.layout(left, top, left + inkView.getMeasuredWidth(), top + inkView.getMeasuredHeight());
+		inkView.layout(left, top, left + inkView.getMeasuredWidth(),
+				top + inkView.getMeasuredHeight());
 	}
 
 	@Override
@@ -69,12 +68,12 @@ public class RevealColorView extends ViewGroup {
 		inkView.measure(sizeSpec, sizeSpec);
 	}
 
-	public void reveal(final int x, final int y, final int color, Animator.AnimatorListener listener) {
+	public void reveal(final int x, final int y, final int color, ViewPropertyAnimatorListener listener) {
 		final int duration = getResources().getInteger(R.integer.rcv_animationDurationReveal);
 		reveal(x, y, color, 0, duration, listener);
 	}
 
-	public void reveal(final int x, final int y, final int color, final int startRadius, long duration, final Animator.AnimatorListener listener) {
+	public void reveal(final int x, final int y, final int color, final int startRadius, long duration, final ViewPropertyAnimatorListener listener) {
 		if (color == inkColor) {
 			return;
 		}
@@ -91,7 +90,49 @@ public class RevealColorView extends ViewGroup {
 		final float finalScale = calculateScale(x, y) * SCALE;
 
 		prepareView(inkView, x, y, startScale);
-		animator = ViewPropertyAnimator.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(new Animator.AnimatorListener() {
+
+
+		//write a compat version of animate
+		animator = ViewCompat.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(
+				new ViewPropertyAnimatorListener() {
+
+					private int layerType;
+
+					@Override
+					public void onAnimationStart(View view) {
+						if (inkView != null) {
+							ViewCompat.setHasTransientState(inkView, true);
+							layerType = ViewCompat.getLayerType(inkView);
+							ViewCompat.setLayerType(inkView, ViewCompat.LAYER_TYPE_HARDWARE, null);
+						}
+						if (listener != null) {
+							listener.onAnimationStart(view);
+						}
+					}
+
+					@Override
+					public void onAnimationEnd(View view) {
+						setBackgroundColor(color);
+						if (inkView != null) {
+							inkView.setVisibility(View.INVISIBLE);
+							ViewCompat.setLayerType(inkView, layerType, null);
+							ViewCompat.setHasTransientState(inkView, false);
+						}
+						if (listener != null) {
+							listener.onAnimationEnd(view);
+						}
+					}
+
+					@Override
+					public void onAnimationCancel(View view) {
+						if (listener != null) {
+							listener.onAnimationCancel(view);
+						}
+					}
+				});
+		prepareAnimator(animator, ANIMATION_REVEAL);
+		animator.start();
+		/*animator = ViewPropertyAnimator.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(new Animator.AnimatorListener() {
 
 			private int layerType;
 
@@ -135,15 +176,15 @@ public class RevealColorView extends ViewGroup {
 			}
 		});
 		prepareAnimator(animator, ANIMATION_REVEAL);
-		animator.start();
+		animator.start();*/
 	}
 
-	public void hide(final int x, final int y, final int color, final Animator.AnimatorListener listener) {
+	public void hide(final int x, final int y, final int color, final ViewPropertyAnimatorListener listener) {
 		final int duration = getResources().getInteger(R.integer.rcv_animationDurationHide);
 		hide(x, y, color, 0, duration, listener);
 	}
 
-	public void hide(final int x, final int y, final int color, final int endRadius, final long duration, final Animator.AnimatorListener listener) {
+	public void hide(final int x, final int y, final int color, final int endRadius, final long duration, final ViewPropertyAnimatorListener listener) {
 		inkColor = Color.TRANSPARENT;
 
 		if (animator != null) {
@@ -158,7 +199,44 @@ public class RevealColorView extends ViewGroup {
 
 		prepareView(inkView, x, y, startScale);
 
-		animator = ViewPropertyAnimator.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(new Animator.AnimatorListener() {
+		animator = ViewCompat.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(
+				new ViewPropertyAnimatorListener() {
+
+					private int layerType;
+
+					@Override
+					public void onAnimationStart(View view) {
+						if (inkView != null) {
+							ViewCompat.setHasTransientState(inkView, true);
+							layerType = ViewCompat.getLayerType(inkView);
+							ViewCompat.setLayerType(inkView, ViewCompat.LAYER_TYPE_HARDWARE, null);
+						}
+						if (listener != null) {
+							listener.onAnimationStart(view);
+						}
+					}
+
+					@Override
+					public void onAnimationEnd(View view) {
+						if (inkView != null) {
+							inkView.setVisibility(View.INVISIBLE);
+							ViewCompat.setLayerType(inkView, layerType, null);
+							ViewCompat.setHasTransientState(inkView, false);
+						}
+						if (listener != null) {
+							listener.onAnimationEnd(view);
+						}
+					}
+
+					@Override
+					public void onAnimationCancel(View view) {
+						if (listener != null) {
+							listener.onAnimationCancel(view);
+						}
+					}
+				});
+
+		/*animator = ViewPropertyAnimator.animate(inkView).scaleX(finalScale).scaleY(finalScale).setDuration(duration).setListener(new Animator.AnimatorListener() {
 
 			private int layerType;
 
@@ -199,12 +277,12 @@ public class RevealColorView extends ViewGroup {
 					listener.onAnimationRepeat(animator);
 				}
 			}
-		});
+		});*/
 		prepareAnimator(animator, ANIMATION_HIDE);
 		animator.start();
 	}
 
-	public ViewPropertyAnimator prepareAnimator(ViewPropertyAnimator animator, int type) {
+	public ViewPropertyAnimatorCompat prepareAnimator(ViewPropertyAnimatorCompat animator, int type) {
 		// ViewPropertyAnimator.withLayer() is not supported by Jake Wharton's NineOldAndroids,
 		// therefore we handle it inside the specific AnimatorListener.
 		animator.setInterpolator(BakedBezierInterpolator.getInstance());
@@ -215,13 +293,13 @@ public class RevealColorView extends ViewGroup {
 		final int centerX = (view.getWidth() / 2);
 		final int centerY = (view.getHeight() / 2);
 
-		ViewHelper.setTranslationX(view, x - centerX);
-		ViewHelper.setTranslationX(view, x - centerX);
-		ViewHelper.setTranslationY(view, y - centerY);
-		ViewHelper.setPivotX(view, centerX);
-		ViewHelper.setPivotY(view, centerY);
-		ViewHelper.setScaleX(view, scale);
-		ViewHelper.setScaleY(view, scale);
+		ViewCompat.setTranslationX(view, x - centerX);
+		ViewCompat.setTranslationX(view, x - centerX);
+		ViewCompat.setTranslationY(view, y - centerY);
+		ViewCompat.setPivotX(view, centerX);
+		ViewCompat.setPivotY(view, centerY);
+		ViewCompat.setScaleX(view, scale);
+		ViewCompat.setScaleY(view, scale);
 	}
 
 	/**

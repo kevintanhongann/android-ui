@@ -1,5 +1,6 @@
 package at.markushi.ui;
 
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -11,7 +12,6 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 
-import com.nineoldandroids.animation.ObjectAnimator;
 
 import at.markushi.ui.action.Action;
 import at.markushi.ui.action.BackAction;

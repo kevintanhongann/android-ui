@@ -21,6 +21,10 @@ android {
         versionName = VERSION_NAME
         versionCode = VERSION_CODE
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
